@@ -42,30 +42,24 @@
         l3.setAttribute('stroke','#6264A7');l3.setAttribute('stroke-width','1.5');
         icon.appendChild(rect); icon.appendChild(l1); icon.appendChild(l2); icon.appendChild(l3);
 
-        const label = document.createElement('span');
-        label.textContent = 'Jegyzőkönyv';
-
         btn.appendChild(icon);
-        btn.appendChild(label);
 
         btn.style.cssText = `
             position: fixed;
-            bottom: 24px;
-            right: 24px;
+            bottom: 80px;
+            right: 16px;
             z-index: 99999;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            padding: 0;
             background: #6264A7;
-            color: white;
             border: none;
-            border-radius: 24px;
+            border-radius: 50%;
             cursor: pointer;
-            font-family: 'Segoe UI', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(98,100,167,0.5);
+            box-shadow: 0 2px 8px rgba(98,100,167,0.5);
             transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
             user-select: none;
         `;
