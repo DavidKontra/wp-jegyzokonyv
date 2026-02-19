@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         WP Jegyzőkönyv
-// @namespace    https://woodpecker.hu/
+// @namespace    https://github.com/DavidKontra/
 // @version      1.0
 // @description  Floatáló gomb a Teams-ben a WP Jegyzőkönyv megnyitásához
-// @author       Woodpecker Informatikai Zrt.
+// @author       Kontra Dávid
 // @match        https://teams.microsoft.com/*
 // @match        https://teams.live.com/*
 // @grant        none
