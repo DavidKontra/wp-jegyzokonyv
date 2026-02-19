@@ -7,7 +7,7 @@
 // @match        https://teams.microsoft.com/*
 // @match        https://teams.live.com/*
 // @grant        none
-// @run-at       document-idle
+// @run-at       document-end
 // ==/UserScript==
 
 (function () {
@@ -98,9 +98,15 @@
         observer.observe(document.body, { childList: true, subtree: false });
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+    // Azonnal próbál, majd 1s és 3s múlva újra (Teams SPA lassan tölt)
+    function tryInit() {
+        if (document.body) {
+            init();
+        } else {
+            setTimeout(tryInit, 200);
+        }
     }
+    tryInit();
+    setTimeout(init, 1000);
+    setTimeout(init, 3000);
 })();
