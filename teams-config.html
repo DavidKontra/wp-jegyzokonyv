@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>WP Jegyzőkönyv – Tab konfiguráció</title>
+    <script src="https://res.cdn.office.net/teams-js/2.19.0/js/MicrosoftTeams.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; padding: 24px; color: #242424; }
+        h2 { color: #6264A7; }
+        p { color: #616161; }
+    </style>
+</head>
+<body>
+    <h2>WP Jegyzőkönyv</h2>
+    <p>Kattints a <strong>Mentés</strong> gombra a tab hozzáadásához ehhez a chathez / csatornához.</p>
+    <script>
+        microsoftTeams.app.initialize().then(() => {
+            microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
+                microsoftTeams.pages.config.setConfig({
+                    suggestedDisplayName: 'Jegyzőkönyv',
+                    entityId: 'wp-jegyzokonyv-tab',
+                    contentUrl: 'ITTAZ_URL/jegyzokonyv-app.html',
+                    websiteUrl: 'ITTAZ_URL/jegyzokonyv-app.html'
+                });
+                saveEvent.notifySuccess();
+            });
+            microsoftTeams.pages.config.setValidityState(true);
+        });
+    </script>
+</body>
+</html>

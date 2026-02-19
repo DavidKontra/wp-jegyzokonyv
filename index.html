@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WP Jegyzőkönyv</title>
+    <script src="https://res.cdn.office.net/teams-js/2.19.0/js/MicrosoftTeams.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8/build/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script>
+        // Teams iframe kompatibilitás — standalone módban is működik
+        if (window.microsoftTeams) {
+            microsoftTeams.app.initialize()
+                .then(() => microsoftTeams.app.notifySuccess())
+                .catch(() => {});
+        }
+    </script>
+    <style>
+        :root {
+            --primary: #6264A7;
+            --primary-hover: #4F5190;
+            --primary-light: #E8E8F4;
+            --bg: #F5F5F5;
+            --card: #FFFFFF;
+            --text: #242424;
+            --text-secondary: #616161;
+            --border: #E1DFDD;
+            --success: #107C10;
+            --warning: #FFB900;
+            --error: #D13438;
+            --radius: 8px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === HEADER === */
+        header {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .header-top h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-top h1 span { font-weight: 300; color: var(--text-secondary); }
+
+        .auto-save-indicator {
+            font-size: 12px;
+            color: var(--text-secondary);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .auto-save-indicator.visible { opacity: 1; }
+
+        /* === TEMPLATE PILLS === */
+        .template-pills {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: thin;
+        }
+
+        .pill {
+            padding: 8px 16px;
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            background: var(--card);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pill:hover { border-color: var(--primary); color: var(--primary); }
+
+        .pill.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .pill .pill-icon { font-size: 15px; }
+
+        /* === MAIN === */
+        main {
+            flex: 1;
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px 24px 100px;
+        }
+
+        /* === FORM SECTIONS === */
+        .form-section {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .form-section h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .meta-grid .field-full { grid-column: 1 / -1; }
+
+        .field-group { margin-bottom: 14px; }
+        .field-group:last-child { margin-bottom: 0; }
+
+        .field-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+
+        .field-group label .required {
+            color: var(--error);
+            margin-left: 2px;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="time"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text);
+            background: var(--card);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.15);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+            line-height: 1.5;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #B0B0B0;
+        }
+
+        /* === RECENT PARTICIPANTS === */
+        .recent-participants {
+            display: none;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            align-items: center;
+        }
+
+        .recent-participants.visible { display: flex; }
+
+        .recent-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-right: 2px;
+        }
+
+        .participant-chip {
+            padding: 3px 10px;
+            background: var(--primary-light);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .participant-chip:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* === ACTION ITEMS === */
+        .action-item-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+
+        .action-item-row input {
+            flex: 1;
+        }
+
+        .action-item-row input[data-field="assignee"] { flex: 0.8; }
+        .action-item-row input[data-field="task"] { flex: 2; }
+        .action-item-row input[data-field="deadline"] { flex: 0; width: 150px; min-width: 150px; }
+
+        .btn-remove-action {
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card);
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .btn-remove-action:hover {
+            border-color: var(--error);
+            color: var(--error);
+            background: #FDE7E9;
+        }
+
+        .btn-add-action {
+            padding: 8px 16px;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.15s;
+        }
+
+        .btn-add-action:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .action-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .action-header span:nth-child(1) { flex: 0.8; }
+        .action-header span:nth-child(2) { flex: 2; }
+        .action-header span:nth-child(3) { width: 150px; }
+        .action-header span:nth-child(4) { width: 34px; }
+
+        /* === FOOTER BAR === */
+        .footer-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            z-index: 100;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-primary:disabled { background: #B0B0C0; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--text-secondary); color: var(--text); }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--error);
+            border: 1px solid var(--border);
+        }
+        .btn-danger:hover { background: #FDE7E9; border-color: var(--error); }
+
+        /* === TOAST === */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--error); }
+
+        /* === TEMPLATE DESCRIPTION === */
+        .template-description {
+            background: var(--primary-light);
+            border-left: 3px solid var(--primary);
+            padding: 10px 14px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--primary-hover);
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 600px) {
+            header { padding: 12px 16px; }
+            main { padding: 12px 16px 100px; }
+            .meta-grid { grid-template-columns: 1fr; }
+            .action-item-row { flex-wrap: wrap; }
+            .action-item-row input[data-field="deadline"] { width: 100%; min-width: 0; flex: 1; }
+            .action-header { display: none; }
+            .pill { padding: 6px 12px; font-size: 12px; }
+        }
+
+        /* === KEYBOARD HINT === */
+        .keyboard-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 4px 0;
+        }
+
+        kbd {
+            background: #EBEBEB;
+            border: 1px solid #D0D0D0;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 11px;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-top">
+        <h1>WP Jegyzőkönyv <span>— meeting notes</span></h1>
+        <span class="auto-save-indicator" id="auto-save-indicator">✓ Mentve</span>
+    </div>
+    <div class="template-pills" id="template-pills">
+        <!-- Dynamically populated -->
+    </div>
+</header>
+
+<main>
+    <div id="template-description" class="template-description"></div>
+    <form id="meeting-form" autocomplete="off">
+        <!-- Meta Section -->
+        <div class="form-section" id="section-meta">
+            <h2>Alapadatok</h2>
+            <div class="meta-grid" id="meta-grid">
+                <!-- date, time, participants + template-specific meta -->
+            </div>
+            <div class="recent-participants" id="recent-participants">
+                <span class="recent-label">Korábbi:</span>
+            </div>
+        </div>
+
+        <!-- Content Section -->
+        <div class="form-section" id="section-content">
+            <h2>Tartalom</h2>
+            <div id="content-fields">
+                <!-- Template-specific fields -->
+            </div>
+        </div>
+
+        <!-- Action Items Section -->
+        <div class="form-section" id="section-actions" style="display:none">
+            <h2>Action Items</h2>
+            <div class="action-header">
+                <span>Felelős</span>
+                <span>Feladat</span>
+                <span>Határidő</span>
+                <span></span>
+            </div>
+            <div id="action-items-container"></div>
+            <button type="button" class="btn-add-action" id="btn-add-action">+ Új action item</button>
+        </div>
+    </form>
+</main>
+
+<div class="footer-bar">
+    <button class="btn btn-primary" id="btn-export" title="Ctrl+S">💾 Mentés .docx</button>
+    <button class="btn btn-secondary" id="btn-clear">🔄 Új jegyzőkönyv</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// TEMPLATE DEFINITIONS
+// ============================================================
+const TEMPLATES = {
+    standup: {
+        name: 'Standup / Napi egyeztetés',
+        icon: '☀️',
+        description: 'Rövid napi státusz — mit csináltam, mit fogok, mi blokkol',
+        metaFields: [],
+        fields: [
+            { id: 'yesterday', label: 'Tegnapi eredmények', type: 'textarea', rows: 3, placeholder: 'Mit sikerült elvégezni?' },
+            { id: 'today', label: 'Mai tervek', type: 'textarea', rows: 3, placeholder: 'Min fogok ma dolgozni?' },
+            { id: 'blockers', label: 'Akadályok, blokkolók', type: 'textarea', rows: 2, placeholder: 'Mi akadályoz? Kinek a segítsége kell?' },
+            { id: 'notes', label: 'Megjegyzések', type: 'textarea', rows: 2, placeholder: 'Egyéb...' }
+        ],
+        hasActionItems: false
+    },
+
+    sprint_planning: {
+        name: 'Sprint Planning',
+        icon: '📋',
+        description: 'Sprint tervezés — cél, backlog, kapacitás, elfogadott feladatok',
+        metaFields: [
+            { id: 'sprint_number', label: 'Sprint #', type: 'number', width: 'short' }
+        ],
+        fields: [
+            { id: 'sprint_goal', label: 'Sprint cél', type: 'textarea', rows: 2, placeholder: 'Mi a sprint fő célja?' },
+            { id: 'backlog_review', label: 'Áttekintett backlog elemek', type: 'textarea', rows: 4, placeholder: 'Milyen story-kat/feladatokat néztünk át?' },
+            { id: 'accepted', label: 'Elfogadott feladatok', type: 'textarea', rows: 4, placeholder: 'Mit vállaltunk a sprintre?' },
+            { id: 'capacity', label: 'Kapacitás és erőforrások', type: 'textarea', rows: 2, placeholder: 'Szabadságok, részmunkaidő, egyéb korlátok...' },
+            { id: 'risks', label: 'Kockázatok', type: 'textarea', rows: 2, placeholder: 'Ismert kockázatok, függőségek...' },
+            { id: 'decisions', label: 'Döntések', type: 'textarea', rows: 2, placeholder: 'Miben döntöttünk?' }
+        ],
+        hasActionItems: true
+    },
+
+    sprint_retro: {
+        name: 'Sprint Retrospective',
+        icon: '🔄',
+        description: 'Sprint visszatekintés — mi ment jól, min javítsunk, konkrét lépések',
+        metaFields: [
+            { id: 'sprint_number', label: 'Sprint #', type: 'number', width: 'short' }
+        ],
+        fields: [
+            { id: 'went_well', label: 'Mi ment jól? ✅', type: 'textarea', rows: 4, placeholder: 'Amire büszkék vagyunk, ami működött...' },
+            { id: 'improve', label: 'Min kellene javítani? ⚠️', type: 'textarea', rows: 4, placeholder: 'Ami nem működött, ami frusztrált...' },
+            { id: 'action_steps', label: 'Konkrét fejlesztési lépések', type: 'textarea', rows: 3, placeholder: 'Mit fogunk MÁSKÉPP csinálni a következő sprintben?' },
+            { id: 'shoutouts', label: 'Kiemelések, köszönetek', type: 'textarea', rows: 2, placeholder: 'Kinek szeretnél köszönetet mondani?' }
+        ],
+        hasActionItems: true
+    },
+
+    general: {
+        name: 'Általános megbeszélés',
+        icon: '💬',
+        description: 'Általános célú sablon — napirend, döntések, action items',
+        metaFields: [
+            { id: 'location', label: 'Helyszín / Csatorna', type: 'text', width: 'full' }
+        ],
+        fields: [
+            { id: 'purpose', label: 'Megbeszélés célja', type: 'text', placeholder: 'Miért jöttünk össze?' },
+            { id: 'agenda', label: 'Napirendi pontok', type: 'textarea', rows: 3, placeholder: '1. ...\n2. ...\n3. ...' },
+            { id: 'summary', label: 'Tárgyalt témák összefoglalója', type: 'textarea', rows: 5, placeholder: 'A megbeszélés során elhangzottak...' },
+            { id: 'decisions', label: 'Döntések', type: 'textarea', rows: 3, placeholder: 'Miben döntöttünk? Ki mit hagyott jóvá?' },
+            { id: 'open_questions', label: 'Nyitott kérdések', type: 'textarea', rows: 2, placeholder: 'Ami még nem dőlt el...' },
+            { id: 'notes', label: 'Megjegyzések', type: 'textarea', rows: 2, placeholder: 'Egyéb...' }
+        ],
+        hasActionItems: true
+    },
+
+    one_on_one: {
+        name: '1:1 Megbeszélés',
+        icon: '🤝',
+        description: 'Kétszemélyes egyeztetés — hangulat, feladatok, fejlődés, visszajelzés',
+        metaFields: [],
+        fields: [
+            { id: 'mood', label: 'Hogyan érzed magad? (1-5)', type: 'select', options: [
+                { value: '', label: '— Válassz —' },
+                { value: '5', label: '5 — Kiváló, motivált' },
+                { value: '4', label: '4 — Jól vagyok' },
+                { value: '3', label: '3 — Semleges' },
+                { value: '2', label: '2 — Nem a legjobb' },
+                { value: '1', label: '1 — Nehéz időszak' }
+            ]},
+            { id: 'current_tasks', label: 'Aktuális feladatok állása', type: 'textarea', rows: 3, placeholder: 'Min dolgozol most? Hogyan haladsz?' },
+            { id: 'challenges', label: 'Kihívások, akadályok', type: 'textarea', rows: 3, placeholder: 'Mi nehezíti a munkádat?' },
+            { id: 'feedback', label: 'Visszajelzés', type: 'textarea', rows: 3, placeholder: 'Visszajelzés mindkét irányban...' },
+            { id: 'growth', label: 'Fejlődési célok', type: 'textarea', rows: 2, placeholder: 'Miben szeretnél fejlődni? Mit tehetek érte?' },
+            { id: 'notes', label: 'Megjegyzések', type: 'textarea', rows: 2, placeholder: 'Egyéb...' }
+        ],
+        hasActionItems: true
+    },
+
+    decision: {
+        name: 'Döntéshozó megbeszélés',
+        icon: '⚖️',
+        description: 'Formális döntési meeting — opciók, érvek, döntés, felelős',
+        metaFields: [
+            { id: 'decision_makers', label: 'Döntéshozók', type: 'text', width: 'full', placeholder: 'Akik szavazati joggal bírnak...' }
+        ],
+        fields: [
+            { id: 'topic', label: 'Döntési téma', type: 'text', placeholder: 'Miről kell döntenünk?' },
+            { id: 'context', label: 'Háttér / Kontextus', type: 'textarea', rows: 3, placeholder: 'Miért került napirendre? Mi a jelenlegi helyzet?' },
+            { id: 'options', label: 'Opciók ismertetése', type: 'textarea', rows: 4, placeholder: 'A) ...\nB) ...\nC) ...' },
+            { id: 'pros_cons', label: 'Érvek és ellenérvek', type: 'textarea', rows: 4, placeholder: 'Milyen szempontok merültek fel?' },
+            { id: 'decision_result', label: '✅ DÖNTÉS', type: 'textarea', rows: 3, placeholder: 'Miben döntöttünk? Milyen feltételekkel?' },
+            { id: 'responsible', label: 'Felelős a végrehajtásért', type: 'text', placeholder: 'Ki viszi végig?' }
+        ],
+        hasActionItems: true
+    }
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let currentTemplate = 'standup';
+let actionItems = [{ assignee: '', task: '', deadline: '' }];
+let saveTimeout = null;
+
+// ============================================================
+// TEMPLATE RENDERING
+// ============================================================
+function renderTemplatePills() {
+    const container = document.getElementById('template-pills');
+    container.innerHTML = Object.entries(TEMPLATES).map(([id, t]) =>
+        `<button type="button" class="pill ${id === currentTemplate ? 'active' : ''}" data-template="${id}">
+            <span class="pill-icon">${t.icon}</span> ${t.name}
+        </button>`
+    ).join('');
+}
+
+function switchTemplate(templateId) {
+    if (!TEMPLATES[templateId]) return;
+    saveFormData(); // save current before switching
+    currentTemplate = templateId;
+    actionItems = [{ assignee: '', task: '', deadline: '' }];
+    renderTemplatePills();
+    renderForm();
+    loadFormData();
+    renderActionItems();
+    renderRecentParticipants();
+}
+
+function renderForm() {
+    const template = TEMPLATES[currentTemplate];
+
+    // Description
+    document.getElementById('template-description').textContent = template.description;
+
+    // Meta grid
+    const metaGrid = document.getElementById('meta-grid');
+    let metaHTML = `
+        <div class="field-group">
+            <label>Dátum <span class="required">*</span></label>
+            <input type="date" id="field-date" required>
+        </div>
+        <div class="field-group">
+            <label>Időpont <span class="required">*</span></label>
+            <input type="time" id="field-time" required>
+        </div>`;
+
+    // Extra meta fields from template
+    for (const mf of template.metaFields) {
+        const cls = mf.width === 'full' ? ' field-full' : '';
+        metaHTML += `
+        <div class="field-group${cls}">
+            <label>${mf.label}</label>
+            <input type="${mf.type}" id="field-${mf.id}" placeholder="${mf.placeholder || ''}">
+        </div>`;
+    }
+
+    metaHTML += `
+        <div class="field-group field-full">
+            <label>Résztvevők</label>
+            <textarea id="field-participants" rows="2" placeholder="Nevek vesszővel elválasztva..."></textarea>
+        </div>`;
+
+    metaGrid.innerHTML = metaHTML;
+
+    // Content fields
+    const contentDiv = document.getElementById('content-fields');
+    contentDiv.innerHTML = template.fields.map(f => {
+        if (f.type === 'textarea') {
+            return `<div class="field-group">
+                <label>${f.label}</label>
+                <textarea id="field-${f.id}" rows="${f.rows || 3}" placeholder="${f.placeholder || ''}"></textarea>
+            </div>`;
+        } else if (f.type === 'select') {
+            return `<div class="field-group">
+                <label>${f.label}</label>
+                <select id="field-${f.id}">
+                    ${f.options.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
+                </select>
+            </div>`;
+        } else {
+            return `<div class="field-group">
+                <label>${f.label}</label>
+                <input type="${f.type || 'text'}" id="field-${f.id}" placeholder="${f.placeholder || ''}">
+            </div>`;
+        }
+    }).join('');
+
+    // Action items section visibility
+    document.getElementById('section-actions').style.display = template.hasActionItems ? 'block' : 'none';
+
+    // Auto-fill date and time
+    const now = new Date();
+    const dateField = document.getElementById('field-date');
+    const timeField = document.getElementById('field-time');
+    if (dateField && !dateField.value) {
+        dateField.value = now.toISOString().split('T')[0];
+    }
+    if (timeField && !timeField.value) {
+        timeField.value = now.toTimeString().slice(0, 5);
+    }
+}
+
+// ============================================================
+// ACTION ITEMS
+// ============================================================
+function renderActionItems() {
+    const container = document.getElementById('action-items-container');
+    container.innerHTML = actionItems.map((item, i) => `
+        <div class="action-item-row" data-index="${i}">
+            <input type="text" data-field="assignee" data-index="${i}" value="${escapeAttr(item.assignee)}" placeholder="Ki?">
+            <input type="text" data-field="task" data-index="${i}" value="${escapeAttr(item.task)}" placeholder="Mit kell csinálni?">
+            <input type="date" data-field="deadline" data-index="${i}" value="${item.deadline}">
+            <button type="button" class="btn-remove-action" data-index="${i}" title="Törlés">×</button>
+        </div>
+    `).join('');
+}
+
+function addActionItem() {
+    actionItems.push({ assignee: '', task: '', deadline: '' });
+    renderActionItems();
+    // Focus the new assignee field
+    const rows = document.querySelectorAll('.action-item-row');
+    const lastRow = rows[rows.length - 1];
+    if (lastRow) lastRow.querySelector('[data-field="assignee"]').focus();
+    scheduleAutoSave();
+}
+
+function removeActionItem(index) {
+    if (actionItems.length <= 1) {
+        actionItems = [{ assignee: '', task: '', deadline: '' }];
+    } else {
+        actionItems.splice(index, 1);
+    }
+    renderActionItems();
+    scheduleAutoSave();
+}
+
+// ============================================================
+// FORM DATA MANAGEMENT
+// ============================================================
+function getFormData() {
+    const template = TEMPLATES[currentTemplate];
+    const data = {};
+
+    // Common meta
+    const dateEl = document.getElementById('field-date');
+    const timeEl = document.getElementById('field-time');
+    const partEl = document.getElementById('field-participants');
+    data.date = dateEl ? dateEl.value : '';
+    data.time = timeEl ? timeEl.value : '';
+    data.participants = partEl ? partEl.value : '';
+
+    // Extra meta
+    for (const mf of template.metaFields) {
+        const el = document.getElementById(`field-${mf.id}`);
+        data[mf.id] = el ? el.value : '';
+    }
+
+    // Content fields
+    for (const f of template.fields) {
+        const el = document.getElementById(`field-${f.id}`);
+        data[f.id] = el ? el.value : '';
+    }
+
+    return data;
+}
+
+function setFormData(data) {
+    if (!data) return;
+    for (const [key, value] of Object.entries(data)) {
+        const el = document.getElementById(`field-${key}`);
+        if (el) el.value = value;
+    }
+}
+
+// ============================================================
+// AUTO-SAVE / LOAD (localStorage)
+// ============================================================
+function scheduleAutoSave() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+        saveFormData();
+        showAutoSaveIndicator();
+    }, 500);
+}
+
+function saveFormData() {
+    const data = getFormData();
+    localStorage.setItem(`jk_form_${currentTemplate}`, JSON.stringify(data));
+    localStorage.setItem(`jk_actions_${currentTemplate}`, JSON.stringify(actionItems));
+    // Save participants to global list
+    saveParticipantsGlobal(data.participants);
+}
+
+function loadFormData() {
+    const saved = localStorage.getItem(`jk_form_${currentTemplate}`);
+    if (saved) {
+        const data = JSON.parse(saved);
+        setFormData(data);
+    }
+    const savedActions = localStorage.getItem(`jk_actions_${currentTemplate}`);
+    if (savedActions) {
+        actionItems = JSON.parse(savedActions);
+        if (actionItems.length === 0) actionItems = [{ assignee: '', task: '', deadline: '' }];
+    } else {
+        actionItems = [{ assignee: '', task: '', deadline: '' }];
+    }
+}
+
+function clearFormData() {
+    if (!confirm('Biztosan új jegyzőkönyvet kezdesz? A jelenlegi adatok törlődnek.')) return;
+    localStorage.removeItem(`jk_form_${currentTemplate}`);
+    localStorage.removeItem(`jk_actions_${currentTemplate}`);
+    actionItems = [{ assignee: '', task: '', deadline: '' }];
+    renderForm();
+    renderActionItems();
+    showToast('Űrlap törölve', 'success');
+}
+
+// ============================================================
+// RECENT PARTICIPANTS
+// ============================================================
+function saveParticipantsGlobal(participantsStr) {
+    if (!participantsStr || !participantsStr.trim()) return;
+    const stored = JSON.parse(localStorage.getItem('jk_all_participants') || '[]');
+    const newNames = participantsStr.split(',').map(n => n.trim()).filter(n => n.length > 0);
+    // Merge, newest first, max 30
+    const merged = [...new Set([...newNames, ...stored])].slice(0, 30);
+    localStorage.setItem('jk_all_participants', JSON.stringify(merged));
+}
+
+function renderRecentParticipants() {
+    const container = document.getElementById('recent-participants');
+    const stored = JSON.parse(localStorage.getItem('jk_all_participants') || '[]');
+    if (stored.length === 0) {
+        container.classList.remove('visible');
+        return;
+    }
+    // Remove the label, rebuild
+    const chips = stored.map(name =>
+        `<span class="participant-chip" data-participant="${escapeAttr(name)}">${escapeHtml(name)}</span>`
+    ).join('');
+    container.innerHTML = `<span class="recent-label">Korábbi:</span> ${chips}`;
+    container.classList.add('visible');
+}
+
+function addParticipant(name) {
+    const textarea = document.getElementById('field-participants');
+    if (!textarea) return;
+    const current = textarea.value.trim();
+    // Check if already present
+    const existing = current.split(',').map(n => n.trim().toLowerCase());
+    if (existing.includes(name.toLowerCase())) return;
+    textarea.value = current ? current + ', ' + name : name;
+    scheduleAutoSave();
+}
+
+// ============================================================
+// DOCX GENERATION
+// ============================================================
+async function generateDocx() {
+    const template = TEMPLATES[currentTemplate];
+    const data = getFormData();
+
+    // Validate required fields
+    if (!data.date) {
+        showToast('Kérlek add meg a dátumot!', 'error');
+        document.getElementById('field-date').focus();
+        return;
+    }
+
+    const children = [];
+
+    // Company header
+    children.push(new docx.Paragraph({
+        children: [new docx.TextRun({ text: 'WOODPECKER', size: 18, color: '999999', font: 'Segoe UI' })],
+        spacing: { after: 80 }
+    }));
+
+    // Meeting type title
+    children.push(new docx.Paragraph({
+        children: [new docx.TextRun({ text: template.name, bold: true, size: 36, font: 'Segoe UI', color: '6264A7' })],
+        spacing: { after: 40 }
+    }));
+
+    // Subtitle
+    children.push(new docx.Paragraph({
+        children: [new docx.TextRun({ text: 'Jegyzőkönyv', size: 24, color: '666666', font: 'Segoe UI' })],
+        spacing: { after: 200 }
+    }));
+
+    // Date, time, extra meta
+    let metaLine = `Dátum: ${data.date || '—'}  |  Időpont: ${data.time || '—'}`;
+    for (const mf of template.metaFields) {
+        if (data[mf.id]) metaLine += `  |  ${mf.label}: ${data[mf.id]}`;
+    }
+    children.push(new docx.Paragraph({
+        children: [new docx.TextRun({ text: metaLine, size: 20, color: '666666', font: 'Segoe UI' })],
+        spacing: { after: 80 }
+    }));
+
+    // Participants
+    if (data.participants) {
+        children.push(new docx.Paragraph({
+            children: [
+                new docx.TextRun({ text: 'Résztvevők: ', bold: true, size: 20, font: 'Segoe UI' }),
+                new docx.TextRun({ text: data.participants, size: 20, font: 'Segoe UI' })
+            ],
+            spacing: { after: 200 }
+        }));
+    }
+
+    // Separator line
+    children.push(new docx.Paragraph({
+        children: [],
+        border: { bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+        spacing: { after: 200 }
+    }));
+
+    // Content fields
+    for (const field of template.fields) {
+        const value = data[field.id];
+        if (!value || !value.trim()) continue;
+
+        // Field label as heading
+        children.push(new docx.Paragraph({
+            children: [new docx.TextRun({ text: field.label.replace(/[✅⚠️]/g, '').trim(), bold: true, size: 24, font: 'Segoe UI', color: '6264A7' })],
+            spacing: { before: 200, after: 80 }
+        }));
+
+        // Field value — split by newlines
+        const lines = value.split('\n');
+        for (const line of lines) {
+            if (!line.trim()) continue;
+            children.push(new docx.Paragraph({
+                children: [new docx.TextRun({ text: line, size: 20, font: 'Segoe UI' })],
+                spacing: { after: 40 }
+            }));
+        }
+    }
+
+    // Action items table
+    if (template.hasActionItems) {
+        const validActions = actionItems.filter(a => a.task.trim());
+        if (validActions.length > 0) {
+            children.push(new docx.Paragraph({
+                children: [],
+                border: { bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: 'CCCCCC' } },
+                spacing: { before: 200, after: 200 }
+            }));
+
+            children.push(new docx.Paragraph({
+                children: [new docx.TextRun({ text: 'ACTION ITEMS', bold: true, size: 24, font: 'Segoe UI', color: '6264A7' })],
+                spacing: { after: 120 }
+            }));
+
+            const headerRow = new docx.TableRow({
+                children: ['Felelős', 'Feladat', 'Határidő'].map((text, i) =>
+                    new docx.TableCell({
+                        children: [new docx.Paragraph({
+                            children: [new docx.TextRun({ text, bold: true, size: 18, font: 'Segoe UI', color: 'FFFFFF' })],
+                            spacing: { before: 40, after: 40 }
+                        })],
+                        shading: { fill: '6264A7' },
+                        width: { size: [25, 50, 25][i], type: docx.WidthType.PERCENTAGE }
+                    })
+                )
+            });
+
+            const dataRows = validActions.map(item =>
+                new docx.TableRow({
+                    children: [item.assignee || '—', item.task, item.deadline || '—'].map(text =>
+                        new docx.TableCell({
+                            children: [new docx.Paragraph({
+                                children: [new docx.TextRun({ text, size: 18, font: 'Segoe UI' })],
+                                spacing: { before: 30, after: 30 }
+                            })]
+                        })
+                    )
+                })
+            );
+
+            children.push(new docx.Table({
+                rows: [headerRow, ...dataRows],
+                width: { size: 100, type: docx.WidthType.PERCENTAGE }
+            }));
+        }
+    }
+
+    // Footer
+    children.push(new docx.Paragraph({
+        children: [new docx.TextRun({
+            text: `Generálva: ${new Date().toLocaleString('hu-HU')} — WP Jegyzőkönyv`,
+            size: 16, color: 'AAAAAA', italics: true, font: 'Segoe UI'
+        })],
+        spacing: { before: 400 }
+    }));
+
+    // Create document
+    const doc = new docx.Document({
+        sections: [{ children }],
+        styles: {
+            default: {
+                document: {
+                    run: { font: 'Segoe UI', size: 20 }
+                }
+            }
+        }
+    });
+
+    try {
+        const blob = await docx.Packer.toBlob(doc);
+        const timeStr = (data.time || '0000').replace(':', '');
+        const filename = `${data.date}_${timeStr}_${currentTemplate}.docx`;
+        saveAs(blob, filename);
+        showToast(`Mentve: ${filename}`, 'success');
+    } catch (err) {
+        console.error('DOCX generation error:', err);
+        showToast('Hiba a .docx generálásnál! Részletek a konzolban.', 'error');
+    }
+}
+
+// ============================================================
+// UI UTILITIES
+// ============================================================
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast visible ' + type;
+    setTimeout(() => { toast.className = 'toast'; }, 3000);
+}
+
+function showAutoSaveIndicator() {
+    const el = document.getElementById('auto-save-indicator');
+    el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 2000);
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function escapeAttr(str) {
+    return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+function initEventListeners() {
+    // Template pills
+    document.getElementById('template-pills').addEventListener('click', (e) => {
+        const pill = e.target.closest('.pill');
+        if (pill) switchTemplate(pill.dataset.template);
+    });
+
+    // Form inputs — auto-save + auto-resize
+    document.getElementById('meeting-form').addEventListener('input', (e) => {
+        // Update action items state if it's an action item field
+        if (e.target.closest('.action-item-row')) {
+            const index = parseInt(e.target.dataset.index);
+            const field = e.target.dataset.field;
+            if (index >= 0 && field && actionItems[index]) {
+                actionItems[index][field] = e.target.value;
+            }
+        }
+        // Auto-resize textareas
+        if (e.target.tagName === 'TEXTAREA') {
+            e.target.style.height = 'auto';
+            e.target.style.height = Math.max(e.target.scrollHeight, 60) + 'px';
+        }
+        scheduleAutoSave();
+    });
+
+    // Action items — remove button
+    document.getElementById('action-items-container').addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-remove-action');
+        if (btn) removeActionItem(parseInt(btn.dataset.index));
+    });
+
+    // Add action item
+    document.getElementById('btn-add-action').addEventListener('click', addActionItem);
+
+    // Recent participants
+    document.getElementById('recent-participants').addEventListener('click', (e) => {
+        const chip = e.target.closest('.participant-chip');
+        if (chip) addParticipant(chip.dataset.participant);
+    });
+
+    // Export button
+    document.getElementById('btn-export').addEventListener('click', generateDocx);
+
+    // Clear button
+    document.getElementById('btn-clear').addEventListener('click', clearFormData);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            generateDocx();
+        }
+    });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+    // Check if dependencies loaded
+    if (typeof docx === 'undefined') {
+        showToast('A docx könyvtár nem töltődött be. Ellenőrizd az internetkapcsolatot!', 'error');
+    }
+
+    renderTemplatePills();
+    renderForm();
+    loadFormData();
+    renderActionItems();
+    renderRecentParticipants();
+    initEventListeners();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
